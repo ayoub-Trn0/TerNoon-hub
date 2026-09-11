@@ -1,71 +1,72 @@
--- TerNoon Hub - Infinite Speed Script
+-- =================================================================
+-- 1. الخدمات والمتغيرات العامة (Services & Config)
+-- =================================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+_G.AutoFarm = false -- متغير التشغيل والإيقاف
 
-local Window = Rayfield:CreateWindow({
-   Name = "TerNoon Hub 🚀",
-   LoadingTitle = "TerNoon Hub Loading...",
-   LoadingSubtitle = "by TerNoon",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false
-})
-
-local MainTab = Window:CreateTab("الميزات الرئيسية ⚡", 4483362458)
-
-local defaultSpeed = 16
-local targetSpeed = 100
-local speedEnabled = false
-local LocalPlayer = game:GetService("Players").LocalPlayer
-
--- التعديل المستمر لمنع الماب من إعادة إعادة ضبط السرعة
-task.spawn(function()
-    while task.wait(0.1) do
-        if speedEnabled then
-            pcall(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = targetSpeed
-                end
-            end)
+-- =================================================================
+-- 2. دالة التجميع التلقائي لجميع الوحوش (Dynamic Monster Scanner)
+-- =================================================================
+local function GetNearestAliveMonster()
+    local enemiesFolder = Workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return nil end
+    
+    -- البحث في الماب عن أي وحش يملك طاقة أكبر من 0
+    for _, monster in ipairs(enemiesFolder:GetChildren()) do
+        local humanoid = monster:FindFirstChildOfClass("Humanoid")
+        local rootPart = monster:FindFirstChild("HumanoidRootPart")
+        
+        if humanoid and humanoid.Health > 0 and rootPart then
+            return monster -- إرجاع أول وحش حي يتم العثور عليه تلقائياً
         end
     end
-end)
+    return nil
+end
 
--- زر التفعيل والإيقاف
-MainTab:CreateToggle({
-   Name = "سرعة لا نهائية (Infinite Speed)",
-   CurrentValue = false,
-   Flag = "SpeedToggle",
-   Callback = function(Value)
-       speedEnabled = Value
-       if not Value then
-           pcall(function()
-               if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                   LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed
-               end
-           end)
-       end
-   end,
-})
+-- =================================================================
+-- 3. المحرك الأساسي للقتل والتلفيل التلقائي (Main Loop)
+-- =================================================================
+local function StartFarmLoop()
+    task.spawn(function()
+        while _G.AutoFarm do
+            task.wait()
+            
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                
+                -- جلب أي وحش متوفر في الماب عبر الدالة التلقائية
+                local targetMonster = GetNearestAliveMonster()
+                
+                if targetMonster then
+                    -- 1. نقل إحداثيات اللاعب فوق رأس الوحش تلقائياً
+                    char.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)
+                    
+                    -- 2. إرسال أمر الهجوم للسيرفر
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack")
+                end
+            end
+        end
+    end)
+end
 
--- شريط التحكم بمقدار السرعة
-MainTab:CreateSlider({
-   Name = "مستوى السرعة (Speed Value)",
-   Range = {16, 500},
-   Increment = 5,
-   Suffix = "Speed",
-   CurrentValue = 100,
-   Flag = "SpeedSlider",
-   Callback = function(Value)
-       targetSpeed = Value
-       if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-           LocalPlayer.Character.Humanoid.WalkSpeed = targetSpeed
-       end
-   end,
-})
+-- =================================================================
+-- 4. بناء الواجهة والأزرار (UI Setup)
+-- =================================================================
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/UI-Library/Example"))()
+local Window = Library:CreateWindow("Universal Auto-Farm")
+local Tab = Window:CreateTab("التجميع التلقائي")
 
-Rayfield:Notify({
-   Title = "TerNoon Hub",
-   Content = "تم تحميل السكريبت بنجاح! 🚀",
-   Duration = 4,
-   Image = 4483362458,
+-- زر تشغيل وإيقاف السكربت
+Tab:CreateToggle({
+    Name = "تفعيل قتل جميع الوحوش تلقائياً",
+    Callback = function(State)
+        _G.AutoFarm = State
+        if State then
+            StartFarmLoop()
+        end
+    end
 })
