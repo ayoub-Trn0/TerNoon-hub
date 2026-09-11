@@ -1,8 +1,14 @@
--- Global Engine & Mobile Optimization Setup
+-- Roblox Blox Fruits Mobile Script (Auto Farm & Mastery Engine)
 _G.AutoFarm = false
-_G.FarmMode = "Quest" -- "Quest" or "No Quest"
-_G.SelectWeapon = "Melee" -- "Melee", "Sword", "Fruit", "Gun"
+_G.AutoSwordMastery = false
+_G.AutoFarmGunMastery = false
+_G.SelectWeapon = "Melee"
+_G.Kill_At = 15 -- Percentage to switch weapon for Mastery
 _G.Fastattack = true
+_G.SkillZ = true
+_G.SkillX = true
+_G.SkillC = true
+_G.SkillV = true
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -10,21 +16,21 @@ local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Anti-AFK Handler
+-- Anti-AFK Setup
 LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- Mobile Collision & Noclip Engine
+-- Mobile Safe Noclip
 RunService.Stepped:Connect(function()
-    if _G.AutoFarm then
+    if _G.AutoFarm or _G.AutoSwordMastery or _G.AutoFarmGunMastery then
         pcall(function()
             if LocalPlayer.Character then
                 for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
                     if v:IsA("BasePart") then
-                        v.CanCollide = false    
+                        v.CanCollide = false
                     end
                 end
             end
@@ -32,25 +38,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Weapon Selector Engine
-function EquipWeapon(weaponType)
-    pcall(function()
-        for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if v:IsA("Tool") then
-                if weaponType == "Melee" and v.ToolTip == "Melee" then
-                    LocalPlayer.Character.Humanoid:EquipTool(v)
-                elseif weaponType == "Sword" and v.ToolTip == "Sword" then
-                    LocalPlayer.Character.Humanoid:EquipTool(v)
-                elseif weaponType == "Fruit" and v.ToolTip == "Blox Fruit" then
-                    LocalPlayer.Character.Humanoid:EquipTool(v)
-                elseif weaponType == "Gun" and v.ToolTip == "Gun" then
-                    LocalPlayer.Character.Humanoid:EquipTool(v)
-                end
-            end
-        end
-    end)
-end
-
+-- Helper Functions
 function TP1(cframe)
     pcall(function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -59,9 +47,25 @@ function TP1(cframe)
     end)
 end
 
--- Fast Attack Simulation for Touch & PC
+function EquipWeapon(weaponType)
+    pcall(function()
+        for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if v:IsA("Tool") then
+                if (weaponType == "Melee" and v.ToolTip == "Melee") or
+                   (weaponType == "Sword" and v.ToolTip == "Sword") or
+                   (weaponType == "Fruit" and v.ToolTip == "Blox Fruit") or
+                   (weaponType == "Gun" and v.ToolTip == "Gun") or
+                   (v.Name == weaponType) then
+                    LocalPlayer.Character.Humanoid:EquipTool(v)
+                end
+            end
+        end
+    end)
+end
+
+-- Fast Attack Simulation
 RunService.RenderStepped:Connect(function()
-    if _G.AutoFarm and _G.Fastattack then
+    if (_G.AutoFarm or _G.AutoSwordMastery or _G.AutoFarmGunMastery) and _G.Fastattack then
         pcall(function()
             VirtualUser:CaptureController()
             VirtualUser:Button1Down(Vector2.new(1280, 672))
@@ -69,57 +73,37 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Level Quest Check System
+-- Dynamic Level & Quest System (Fixed Infinite Teleport Loop)
 function CheckQuest()
-    local MyLevel = LocalPlayer.Data.Level.Value
+    local Level = LocalPlayer.Data.Level.Value
     
-    if MyLevel >= 1 and MyLevel <= 9 then
-        NameMon = "Bandit"
-        NameQuest = "BanditQuest1"
-        LevelQuest = 1
-        CFrameQuest = CFrame.new(1059.37195, 15.4495068, 1550.4231)
-        CFrameMon = CFrame.new(1145, 17, 1634)
-    elseif MyLevel >= 10 and MyLevel <= 14 then
-        NameMon = "Monkey"
-        NameQuest = "JungleQuest"
-        LevelQuest = 1
-        CFrameQuest = CFrame.new(-1598.08911, 35.5501175, 153.377838)
-        CFrameMon = CFrame.new(-1610, 22, 142)
-    elseif MyLevel >= 15 and MyLevel <= 29 then
-        NameMon = "Gorilla"
-        NameQuest = "JungleQuest"
-        LevelQuest = 2
-        CFrameQuest = CFrame.new(-1598.08911, 35.5501175, 153.377838)
-        CFrameMon = CFrame.new(-1240, 6, 500)
-    elseif MyLevel >= 30 and MyLevel <= 39 then
-        NameMon = "Pirate"
-        NameQuest = "BuggyQuest1"
-        LevelQuest = 1
-        CFrameQuest = CFrame.new(-1141.07483, 4.10001802, 3831.54956)
-        CFrameMon = CFrame.new(-1200, 4, 3860)
-    elseif MyLevel >= 40 and MyLevel <= 59 then
-        NameMon = "Brute"
-        NameQuest = "BuggyQuest1"
-        LevelQuest = 2
-        CFrameQuest = CFrame.new(-1141.07483, 4.10001802, 3831.54956)
-        CFrameMon = CFrame.new(-1150, 8, 4350)
-    elseif MyLevel >= 60 and MyLevel <= 89 then
-        NameMon = "Desert Bandit"
-        NameQuest = "DesertQuest"
-        LevelQuest = 1
-        CFrameQuest = CFrame.new(894.488647, 6.43846154, 4392.43359)
-        CFrameMon = CFrame.new(900, 6, 4450)
+    -- First Sea Quests Setup
+    if Level >= 1 and Level <= 9 then
+        Mon = "Bandit" NameMon = "Bandit" NameQuest = "BanditQuest1" LevelQuest = 1
+        CFrameQuest = CFrame.new(1059.37, 15.44, 1550.42) CFrameMon = CFrame.new(1145, 17, 1634)
+    elseif Level >= 10 and Level <= 14 then
+        Mon = "Monkey" NameMon = "Monkey" NameQuest = "JungleQuest" LevelQuest = 1
+        CFrameQuest = CFrame.new(-1598.08, 35.55, 153.37) CFrameMon = CFrame.new(-1610, 22, 142)
+    elseif Level >= 15 and Level <= 29 then
+        Mon = "Gorilla" NameMon = "Gorilla" NameQuest = "JungleQuest" LevelQuest = 2
+        CFrameQuest = CFrame.new(-1598.08, 35.55, 153.37) CFrameMon = CFrame.new(-1240, 6, 500)
+    elseif Level >= 30 and Level <= 39 then
+        Mon = "Pirate" NameMon = "Pirate" NameQuest = "BuggyQuest1" LevelQuest = 1
+        CFrameQuest = CFrame.new(-1141.07, 4.10, 3831.54) CFrameMon = CFrame.new(-1200, 4, 3860)
+    elseif Level >= 40 and Level <= 59 then
+        Mon = "Brute" NameMon = "Brute" NameQuest = "BuggyQuest1" LevelQuest = 2
+        CFrameQuest = CFrame.new(-1141.07, 4.10, 3831.54) CFrameMon = CFrame.new(-1150, 8, 4350)
+    elseif Level >= 60 and Level <= 89 then
+        Mon = "Desert Bandit" NameMon = "Desert Bandit" NameQuest = "DesertQuest" LevelQuest = 1
+        CFrameQuest = CFrame.new(894.48, 6.43, 4392.43) CFrameMon = CFrame.new(900, 6, 4450)
     else
-        -- القائمة تمتد لتغطي باقي مستويات اللعبة والبحار الثلاثة بنفس النمط
-        NameMon = "Bandit"
-        NameQuest = "BanditQuest1"
-        LevelQuest = 1
-        CFrameQuest = CFrame.new(1059.37195, 15.4495068, 1550.4231)
-        CFrameMon = CFrame.new(1145, 17, 1634)
+        -- Fallback to default island if level exceeds defined range
+        Mon = "Bandit" NameMon = "Bandit" NameQuest = "BanditQuest1" LevelQuest = 1
+        CFrameQuest = CFrame.new(1059.37, 15.44, 1550.42) CFrameMon = CFrame.new(1145, 17, 1634)
     end
 end
 
--- Full Auto Farm Quest Execution Loop
+-- Core Auto Farm Engine (Safe Teleport Logic)
 task.spawn(function()
     while task.wait(0.2) do
         if _G.AutoFarm then
@@ -127,29 +111,24 @@ task.spawn(function()
                 CheckQuest()
                 local QuestGui = LocalPlayer.PlayerGui.Main.Quest
                 
-                -- إذا لم تكن هناك مهمة مفعّلة، اتجه للجزيرة وخذ المهمة
                 if not QuestGui.Visible then
                     TP1(CFrameQuest)
-                    if (LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 10 then
+                    -- Wait until character is genuinely near NPC before calling server remote
+                    if (LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 15 then
+                        task.wait(0.3)
                         ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", NameQuest, LevelQuest)
                     end
                 else
-                    -- إذا كانت المهمة مفعّلة، ابحث عن الوحش واتجه للقتال
-                    local EnemyFound = false
-                    for _, v in pairs(workspace.Enemies:GetChildren()) do
-                        if v.Name == NameMon and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-                            EnemyFound = true
-                            repeat task.wait()
-                                EquipWeapon(_G.SelectWeapon)
-                                v.HumanoidRootPart.CanCollide = false
-                                v.Humanoid.WalkSpeed = 0
-                                v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                                TP1(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
-                            until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or not QuestGui.Visible
-                        end
-                    end
-                    -- إذا لم يظهر الوحش بعد، ينتظر في منطقة الـ Spawn الخاصة بالوحوش
-                    if not EnemyFound then
+                    local Target = workspace.Enemies:FindFirstChild(Mon)
+                    if Target and Target:FindFirstChild("Humanoid") and Target.Humanoid.Health > 0 then
+                        repeat task.wait()
+                            EquipWeapon(_G.SelectWeapon)
+                            Target.HumanoidRootPart.CanCollide = false
+                            Target.Humanoid.WalkSpeed = 0
+                            Target.HumanoidRootPart.Size = Vector3.new(50, 50, 50)
+                            TP1(Target.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
+                        until not _G.AutoFarm or Target.Humanoid.Health <= 0 or not Target.Parent or not QuestGui.Visible
+                    else
                         TP1(CFrameMon)
                     end
                 end
@@ -158,35 +137,32 @@ task.spawn(function()
     end
 end)
 
--- Mobile UI Panel (Touch-Friendly Controls)
+-- Mobile UI Interface
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleUIBtn = Instance.new("TextButton")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local FarmToggle = Instance.new("TextButton")
-local WeaponToggle = Instance.new("TextButton")
+local SwordMasteryToggle = Instance.new("TextButton")
 local UIList = Instance.new("UIListLayout")
 
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- زر عائم لفتح وإغلاق القائمة في الموبايل
-ToggleUIBtn.Name = "OpenMenuBtn"
+ToggleUIBtn.Name = "MobileMenuToggle"
 ToggleUIBtn.Parent = ScreenGui
-ToggleUIBtn.Position = UDim2.new(0.02, 0, 0.15, 0)
+ToggleUIBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
 ToggleUIBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleUIBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ToggleUIBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 ToggleUIBtn.Text = "MENU"
 ToggleUIBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleUIBtn.TextSize = 12
 ToggleUIBtn.Font = Enum.Font.SourceSansBold
 
 MainFrame.Name = "MainHubFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.Position = UDim2.new(0.15, 0, 0.15, 0)
-MainFrame.Size = UDim2.new(0, 240, 0, 180)
-MainFrame.Visible = true
+MainFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 240, 0, 220)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -196,9 +172,8 @@ end)
 
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Auto Farm Level - Mobile"
+Title.Text = "Blox Fruits Mobile Hub"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
 
 UIList.Parent = MainFrame
@@ -210,31 +185,21 @@ FarmToggle.Size = UDim2.new(0.9, 0, 0, 45)
 FarmToggle.Text = "Auto Farm Level: OFF"
 FarmToggle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 FarmToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-FarmToggle.TextSize = 14
 
 FarmToggle.MouseButton1Click:Connect(function()
     _G.AutoFarm = not _G.AutoFarm
-    if _G.AutoFarm then
-        FarmToggle.Text = "Auto Farm Level: ON"
-        FarmToggle.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
-    else
-        FarmToggle.Text = "Auto Farm Level: OFF"
-        FarmToggle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    end
+    FarmToggle.Text = _G.AutoFarm and "Auto Farm Level: ON" or "Auto Farm Level: OFF"
+    FarmToggle.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(180, 40, 40)
 end)
 
-WeaponToggle.Parent = MainFrame
-WeaponToggle.Size = UDim2.new(0.9, 0, 0, 45)
-WeaponToggle.Text = "Weapon: Melee"
-WeaponToggle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-WeaponToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-WeaponToggle.TextSize = 14
+SwordMasteryToggle.Parent = MainFrame
+SwordMasteryToggle.Size = UDim2.new(0.9, 0, 0, 45)
+SwordMasteryToggle.Text = "Sword Mastery: OFF"
+SwordMasteryToggle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+SwordMasteryToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-local weapons = {"Melee", "Sword", "Fruit", "Gun"}
-local wIdx = 1
-
-WeaponToggle.MouseButton1Click:Connect(function()
-    wIdx = (wIdx % #weapons) + 1
-    _G.SelectWeapon = weapons[wIdx]
-    WeaponToggle.Text = "Weapon: " .. _G.SelectWeapon
+SwordMasteryToggle.MouseButton1Click:Connect(function()
+    _G.AutoSwordMastery = not _G.AutoSwordMastery
+    SwordMasteryToggle.Text = _G.AutoSwordMastery and "Sword Mastery: ON" or "Sword Mastery: OFF"
+    SwordMasteryToggle.BackgroundColor3 = _G.AutoSwordMastery and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(180, 40, 40)
 end)
