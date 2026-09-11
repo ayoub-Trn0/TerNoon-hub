@@ -9,26 +9,25 @@ local LocalPlayer = Players.LocalPlayer
 _G.AutoFarm = false -- متغير التشغيل والإيقاف
 
 -- =================================================================
--- 2. دالة التجميع التلقائي لجميع الوحوش (Dynamic Monster Scanner)
+-- 2. دالة المسح الديناميكي للوحوش (Mobile Optimized)
 -- =================================================================
 local function GetNearestAliveMonster()
     local enemiesFolder = Workspace:FindFirstChild("Enemies")
     if not enemiesFolder then return nil end
     
-    -- البحث في الماب عن أي وحش يملك طاقة أكبر من 0
     for _, monster in ipairs(enemiesFolder:GetChildren()) do
         local humanoid = monster:FindFirstChildOfClass("Humanoid")
         local rootPart = monster:FindFirstChild("HumanoidRootPart")
         
         if humanoid and humanoid.Health > 0 and rootPart then
-            return monster -- إرجاع أول وحش حي يتم العثور عليه تلقائياً
+            return monster
         end
     end
     return nil
 end
 
 -- =================================================================
--- 3. المحرك الأساسي للقتل والتلفيل التلقائي (Main Loop)
+-- 3. المحرك الأساسي للتلفيل (Main Farm Loop)
 -- =================================================================
 local function StartFarmLoop()
     task.spawn(function()
@@ -37,15 +36,12 @@ local function StartFarmLoop()
             
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
-                
-                -- جلب أي وحش متوفر في الماب عبر الدالة التلقائية
                 local targetMonster = GetNearestAliveMonster()
                 
-                if targetMonster then
-                    -- 1. نقل إحداثيات اللاعب فوق رأس الوحش تلقائياً
+                if targetMonster and targetMonster:FindFirstChild("HumanoidRootPart") then
+                    -- التثبيت فوق الوحش
                     char.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)
-                    
-                    -- 2. إرسال أمر الهجوم للسيرفر
+                    -- إرسال أمر الضرب
                     ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack")
                 end
             end
@@ -54,19 +50,18 @@ local function StartFarmLoop()
 end
 
 -- =================================================================
--- 4. بناء الواجهة والأزرار (UI Setup)
+-- 4. واجهة Kavo UI (تظهر على الجوال والكمبيوتر بدون مشاكل)
 -- =================================================================
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/UI-Library/Example"))()
-local Window = Library:CreateWindow("Universal Auto-Farm")
-local Tab = Window:CreateTab("التجميع التلقائي")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Mobile Auto-Farm", "DarkTheme")
 
--- زر تشغيل وإيقاف السكربت
-Tab:CreateToggle({
-    Name = "تفعيل قتل جميع الوحوش تلقائياً",
-    Callback = function(State)
-        _G.AutoFarm = State
-        if State then
-            StartFarmLoop()
-        end
+-- إنشاء تبويب وزر داخل الواجهة
+local Tab = Window:NewTab("التلفيل")
+local Section = Tab:NewSection("التحكم بالسكربت")
+
+Section:NewToggle("تفعيل قتل جميع الوحوش", "تشغيل/إيقاف التجميع", function(state)
+    _G.AutoFarm = state
+    if state then
+        StartFarmLoop()
     end
-})
+end)
