@@ -3,7 +3,7 @@
 -- =================================================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 _G.AutoFarm = false 
@@ -49,49 +49,57 @@ local function GetLevelMatchedMonster()
 end
 
 -- =================================================================
--- 3. دالة تجهيز اليد (Melee) من الحقيبة
+-- 3. دالة تجهيز اليد وتفعيل الضرب المباشر (Tool Activate)
 -- =================================================================
-local function EquipMeleeTool(char)
+local function EquipAndAttack(char)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack or not char then return end
 
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and (tool.ToolTip == "Melee" or tool:FindFirstChild("Combat") or tool.Name == "Combat") then
-            char.Humanoid:EquipTool(tool)
-            break
+    -- 1. البحث عن اليد وتجهيزها إذا لم تكن ممسوكة
+    local currentTool = char:FindFirstChildOfClass("Tool")
+    if not currentTool then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (tool.ToolTip == "Melee" or tool:FindFirstChild("Combat") or tool.Name == "Combat") then
+                char.Humanoid:EquipTool(tool)
+                currentTool = tool
+                break
+            end
         end
     end
-    
-    if char:FindFirstChildOfClass("Tool") == nil then
+
+    -- إذا لم يجد كلمة Melee يمسك أول Tool متوفر
+    if not currentTool then
         local firstTool = backpack:FindFirstChildOfClass("Tool")
         if firstTool then
             char.Humanoid:EquipTool(firstTool)
+            currentTool = firstTool
         end
+    end
+
+    -- 2. إطلاق أمر الضرب برمجياً مباشرة عبر الـ Tool نفسه
+    if currentTool then
+        currentTool:Activate() -- تفعيل هجوم السلاح/اليد مباشرة
     end
 end
 
 -- =================================================================
--- 4. محرك التثبيت والنقر المباشر على الشاشة
+-- 4. المحرك الأساسي للتثبيت والتكرار السريع
 -- =================================================================
 local function StartFarmLoop()
     task.spawn(function()
         while _G.AutoFarm do
-            task.wait(0.1) -- سرعة الضرب والتثبيت
+            task.wait(0.1)
             
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
                 local targetMonster = GetLevelMatchedMonster()
                 
                 if targetMonster and targetMonster:FindFirstChild("HumanoidRootPart") then
-                    -- 1. التثبيت فوق رأس الوحش بـ 4 مكعبات فقط للوصول السريع
+                    -- التثبيت فوق رأس الوحش بـ 4 مكعبات
                     char.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 4, 0)
                     
-                    -- 2. التأكد من إمساك اليد
-                    EquipMeleeTool(char)
-                    
-                    -- 3. محاكاة نقر الأصبع المباشر على منتصف الشاشة للجوال
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton1(Vector2.new(500, 500))
+                    -- تجهيز اليد وإطلاق الضرب الفوري
+                    EquipAndAttack(char)
                 end
             end
         end
@@ -102,19 +110,19 @@ end
 -- 5. الواجهة والزر العائم للجوال
 -- =================================================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Mobile Auto-Farm (Clicker)", "DarkTheme")
+local Window = Library.CreateLib("Mobile Auto-Farm (Tool Activate)", "DarkTheme")
 
 local Tab = Window:NewTab("التلفيل")
-local Section = Tab:NewSection("الضرب بالنقر المباشر")
+local Section = Tab:NewSection("التحكم بالسكربت")
 
-Section:NewToggle("تفعيل التلفيل والنقر", "ينقل فوق الوحش وينقر الشاشة تلقائياً", function(state)
+Section:NewToggle("تفعيل الضرب المباشر", "تفعيل السلاح وتكرار الهجوم", function(state)
     _G.AutoFarm = state
     if state then
         StartFarmLoop()
     end
 end)
 
--- زر إخفاء/إظهار الواجهة المخصص للجوال
+-- زر إخفاء وإظهار الواجهة العائم للجوال
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleButton = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
@@ -126,7 +134,7 @@ ToggleButton.Parent = ScreenGui
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.Position = UDim2.new(0.05, 0, 0.15, 0)
 ToggleButton.Size = UDim2.new(0, 80, 0, 40)
-ToggleButton.Text = "إخفاء/إظهار"
+ToggleButton.Text = "إخفاء"
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.TextSize = 12
 ToggleButton.Active = true
