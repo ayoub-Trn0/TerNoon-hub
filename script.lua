@@ -2,8 +2,8 @@
 -- 1. الخدمات والمتغيرات العامة (Services & Config)
 -- =================================================================
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
 _G.AutoFarm = false 
@@ -49,13 +49,12 @@ local function GetLevelMatchedMonster()
 end
 
 -- =================================================================
--- 3. دالة تجهيز اليد (Melee) من الحقيبة تلقائياً
+-- 3. دالة تجهيز اليد (Melee) من الحقيبة
 -- =================================================================
 local function EquipMeleeTool(char)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack or not char then return end
 
-    -- البحث عن سلاح اليد داخل الحقيبة وتجهيزه
     for _, tool in ipairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and (tool.ToolTip == "Melee" or tool:FindFirstChild("Combat") or tool.Name == "Combat") then
             char.Humanoid:EquipTool(tool)
@@ -63,7 +62,6 @@ local function EquipMeleeTool(char)
         end
     end
     
-    -- إذا لم يجد كلمة Melee صريحة، يمسك أول Tool متوفر
     if char:FindFirstChildOfClass("Tool") == nil then
         local firstTool = backpack:FindFirstChildOfClass("Tool")
         if firstTool then
@@ -73,35 +71,27 @@ local function EquipMeleeTool(char)
 end
 
 -- =================================================================
--- 4. محرك التثبيت والقتال باليد
+-- 4. محرك التثبيت والنقر المباشر على الشاشة
 -- =================================================================
 local function StartFarmLoop()
     task.spawn(function()
         while _G.AutoFarm do
-            task.wait()
+            task.wait(0.1) -- سرعة الضرب والتثبيت
             
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
                 local targetMonster = GetLevelMatchedMonster()
                 
                 if targetMonster and targetMonster:FindFirstChild("HumanoidRootPart") then
-                    -- 1. التثبيت فوق الوحش بـ 5 مكعبات لضمان وصول ضربات اليد
-                    char.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
+                    -- 1. التثبيت فوق رأس الوحش بـ 4 مكعبات فقط للوصول السريع
+                    char.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 4, 0)
                     
-                    -- 2. تجهيز القتال باليد تلقائياً
+                    -- 2. التأكد من إمساك اليد
                     EquipMeleeTool(char)
                     
-                    -- 3. إرسال أمر الهجوم للسيرفر (Blox Fruits Register Hit)
-                    pcall(function()
-                        local netFolder = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Net")
-                        if netFolder then
-                            netFolder:FindFirstChild("RegisterAttack"):InvokeServer()
-                            netFolder:FindFirstChild("RegisterHit"):FireServer(targetMonster.HumanoidRootPart, {targetMonster})
-                        else
-                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                        end
-                    end)
+                    -- 3. محاكاة نقر الأصبع المباشر على منتصف الشاشة للجوال
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton1(Vector2.new(500, 500))
                 end
             end
         end
@@ -112,12 +102,12 @@ end
 -- 5. الواجهة والزر العائم للجوال
 -- =================================================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Mobile Auto-Farm (Melee)", "DarkTheme")
+local Window = Library.CreateLib("Mobile Auto-Farm (Clicker)", "DarkTheme")
 
 local Tab = Window:NewTab("التلفيل")
-local Section = Tab:NewSection("القتال باليد")
+local Section = Tab:NewSection("الضرب بالنقر المباشر")
 
-Section:NewToggle("تفعيل التلفيل باليد", "تجهيز القتال باليد والضرب أوتوماتيكياً", function(state)
+Section:NewToggle("تفعيل التلفيل والنقر", "ينقل فوق الوحش وينقر الشاشة تلقائياً", function(state)
     _G.AutoFarm = state
     if state then
         StartFarmLoop()
