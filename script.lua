@@ -1,67 +1,87 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+-- 1. استدعاء مكتبة الواجهات Fluent متوافقة مع الجوال ودلتا
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
--- 1. إنشاء واجهة الشاشة للـ Delta
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "StealAnEggUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
+-- 2. إنشاء النافذة الرئيسية للواجهة
+local Window = Fluent:CreateWindow({
+    Title = "Steal an Egg - Egg Collector 🥚",
+    SubTitle = "نسخة الجوال",
+    TabWidth = 140,
+    Size = UDim2.fromOffset(450, 320), -- حجم مناسب جداً لشاشات الجوال
+    Acrylic = false, -- إيقاف التغبيش لتحسين الأداء (FPS) على الهواتف
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
 
--- 2. تصميم الزر المخصص للجوال
-local CollectButton = Instance.new("TextButton")
-CollectButton.Parent = ScreenGui
-CollectButton.Size = UDim2.new(0.4, 0, 0.08, 0) -- حجم متناسق مع الجوال
-CollectButton.Position = UDim2.new(0.05, 0, 0.4, 0)
-CollectButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-CollectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CollectButton.Text = "فحص بيض الماب 🥚"
-CollectButton.TextScaled = true
-CollectButton.Font = Enum.Font.SourceSansBold
+-- 3. إضافة تبويب جديد داخل الواجهة
+local Tabs = {
+    Main = Window:AddTab({ Title = "الرئيسية", Icon = "egg" })
+}
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0.2, 0)
-UICorner.Parent = CollectButton
+-- 4. إضافة نص توضيحي
+Tabs.Main:AddParagraph({
+    Title = "فحص البيض تلقائياً",
+    Content = "اضغط على الزر بالأسفل لجلب كافة أسماء وأماكن البيض المتاحة في الماب."
+})
 
--- 3. منطق البحث والتجميع للعبة Steal an Egg
-CollectButton.MouseButton1Click:Connect(function()
-    CollectButton.Text = "جاري الفحص..."
-    CollectButton.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+-- 5. إضافة زر الفحص المتجاوب
+Tabs.Main:AddButton({
+    Title = "تجميع وفحص كل البيض 🥚",
+    Description = "يجلب أسماء البيض من مجلدات الماب تلقائياً",
+    Callback = function()
+        -- إرسال إشعار للمستخدم بدء العملية
+        Fluent:Notify({
+            Title = "جاري البحث...",
+            Content = " يتم فحص مسارات الماب الآن",
+            Duration = 2
+        })
 
-    local foundEggs = {}
+        local foundEggs = {}
 
-    -- البحث في المجلدات الشائعة لمابات السرقة
-    local possiblePaths = {
-        workspace:FindFirstChild("Eggs"),
-        workspace:FindFirstChild("DroppedEggs"),
-        workspace:FindFirstChild("SpawnedEggs"),
-        ReplicatedStorage:FindFirstChild("Eggs")
-    }
+        -- المسارات الشائعة لوجود البيض في مابات السرقة
+        local possiblePaths = {
+            workspace:FindFirstChild("Eggs"),
+            workspace:FindFirstChild("DroppedEggs"),
+            workspace:FindFirstChild("SpawnedEggs"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("Eggs")
+        }
 
-    for _, folder in ipairs(possiblePaths) do
-        if folder then
-            for _, item in ipairs(folder:GetChildren()) do
-                table.insert(foundEggs, item.Name)
+        -- فحص المجلدات وتجميع العناصر
+        for _, folder in ipairs(possiblePaths) do
+            if folder then
+                for _, item in ipairs(folder:GetChildren()) do
+                    table.insert(foundEggs, item.Name)
+                end
             end
         end
-    end
 
-    -- تحديث الواجهة بالنتيجة
-    if #foundEggs > 0 then
-        CollectButton.Text = "تم العثور على: " .. #foundEggs .. " بيضة!"
-        CollectButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-        
-        print("--- قائمة البيضات المكتشفة في Steal an Egg ---")
-        for i, egg in ipairs(foundEggs) do
-            print(i .. ". " .. egg)
+        -- عرض النتيجة عبر إشعار متناسق في الشاشة
+        if #foundEggs > 0 then
+            Fluent:Notify({
+                Title = "نجحت العملية! 🎉",
+                Content = "تم العثور على " .. #foundEggs .. " بيضة داخل الماب.",
+                Duration = 4
+            })
+            
+            print("--- قائمة البيض المكتشف ---")
+            for i, egg in ipairs(foundEggs) do
+                print(i .. ". " .. egg)
+            end
+        else
+            Fluent:Notify({
+                Title = "تنبيه ⚠️",
+                Content = "لم يتم العثور على مجلد باسم Eggs، استخدم Dark Dex لمعرفة اسم المجلد.",
+                Duration = 5
+            })
         end
-    else
-        CollectButton.Text = "استخدم Dex لتحديد المجلد"
-        CollectButton.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
     end
+})
 
-    task.wait(2.5)
-    CollectButton.Text = "فحص بيض الماب 🥚"
-    CollectButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-end)
+-- اختيار التبويب الرئيسي بشكل افتراضي
+Window:SelectTab(1)
+
+-- إشعار بنجاح تحميل الواجهة
+Fluent:Notify({
+    Title = "تم تشغيل الواجهة",
+    Content = "الواجهة جاهزة للاستخدام على الجوال!",
+    Duration = 3
+})
