@@ -1,4 +1,4 @@
--- [[ ScriptVerse - Steal An Egg (Mobile Native UI) ]]
+-- [[ TerNoon Hub - Steal An Egg (Safe Mobile Version) ]]
 local genv = (getgenv and getgenv()) or _G
 
 if type(genv.SV_SAE_SHUTDOWN) == "function" then
@@ -10,106 +10,110 @@ genv.SV_SAE_RUNNING = true
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- تحميل مكتبة واجهة مخصصة ومضمنة للجوال (Mobile Friendly Library)
+-- Kavo UI Engine
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Kavo.CreateLib("Steal An Egg 🥚 (Delta Mobile)", "Midnight")
+local Window = Kavo.CreateLib("TerNoon Hub 🥚", "Midnight")
 
--- Tabs
 local FarmTab = Window:NewTab("المزرعة")
 local BaseTab = Window:NewTab("القاعدة")
-local PetsTab = Window:NewTab("الحيوانات")
 local PlayerTab = Window:NewTab("اللاعب")
 
--- Sections
-local FarmSec = FarmTab:NewSection("أتمتة السرقة")
-local BaseSec = BaseTab:NewSection("البيض والتطوير")
-local PetsSec = PetsTab:NewSection("إدارة الحيوانات")
+local FarmSec = FarmTab:NewSection("أتمتة السرقة (Safe)")
+local BaseSec = BaseTab:NewSection("البيض")
 local PlayerSec = PlayerTab:NewSection("الحركة والحماية")
 
 local State = {
 	running = true,
 	autofarm = false,
-	preferHighValue = true,
 	autoPlace = false,
 	autoHatch = false,
-	autoUpgrade = false,
-	autoEquipBest = false,
-	autoFuse = false,
-	autoSellPets = false,
 	speedOn = false,
-	walkSpeed = 32,
+	walkSpeed = 24, -- سرعة آمنة لتفادي الطرد
 	infJump = false,
 	antiAfk = true
 }
 
--- Farm Controls
-FarmSec:NewToggle("تفعيل السرقة التلقائية (Autofarm)", "يقوم بالسرقة والعودة تلقائياً", function(v)
-	State.autofarm = v
-end)
+-- Safe Movement Helper (Avoid Anti-Cheat Kick)
+local function safeMoveTo(targetCFrame)
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-FarmSec:NewToggle("إعطاء الأولوية للبيض النادر", "يختار البيض الأغلى", function(v)
-	State.preferHighValue = v
-end)
+	local dist = (root.Position - targetCFrame.Position).Magnitude
+	local speed = math.clamp(State.walkSpeed, 16, 30)
+	local time = dist / speed
 
--- Base Controls
-BaseSec:NewToggle("وضع البيض تلقائياً", "يضع البيض من الحقيبة", function(v)
-	State.autoPlace = v
-end)
+	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+	local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+	tween:Play()
+	tween.Completed:Wait()
+end
 
-BaseSec:NewToggle("تفقيس البيض تلقائياً", "يفقس البيض الجاهز", function(v)
-	State.autoHatch = v
-end)
-
-BaseSec:NewToggle("ترقية المقر تلقائياً", "يشتري ترقيات الـ Base", function(v)
-	State.autoUpgrade = v
-end)
-
--- Pets Controls
-PetsSec:NewToggle("لبس أفضل الحيوانات", "Equip Best Pets", function(v)
-	State.autoEquipBest = v
-end)
-
-PetsSec:NewToggle("دمج الحيوانات تلقائياً", "Fuse Pets", function(v)
-	State.autoFuse = v
-end)
-
-PetsSec:NewToggle("بيع الحيوانات الزائدة", "Auto Sell Pets", function(v)
-	State.autoSellPets = v
-end)
-
--- Player Controls
-PlayerSec:NewToggle("تفعيل سرعة المشي", "Speed Hack", function(v)
-	State.speedOn = v
-	if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+-- Farm Logic Loop
+task.spawn(function()
+	while State.running do
+		task.wait(0.5)
+		if State.autofarm then
+			pcall(function()
+				-- البحث عن البيض القريب في الخريطة
+				local eggsFolder = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("DroppedEggs")
+				if eggsFolder then
+					for _, egg in ipairs(eggsFolder:GetChildren()) do
+						if not State.autofarm then break end
+						if egg:IsA("BasePart") or egg:FindFirstChild("TouchInterest") or egg:FindFirstChildOfClass("ProximityPrompt") then
+							local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
+							if prompt then
+								safeMoveTo(egg.CFrame + Vector3.new(0, 3, 0))
+								task.wait(0.2)
+								fireproximityprompt(prompt)
+								task.wait(0.5)
+							end
+						end
+					end
+				end
+			end)
+		end
 	end
 end)
 
-PlayerSec:NewSlider("مستوى السرعة", "WalkSpeed", 100, 16, function(v)
+-- Controls
+FarmSec:NewToggle("تفعيل السرقة التلقائية الآمنة", "Safe Autofarm", function(v)
+	State.autofarm = v
+end)
+
+BaseSec:NewToggle("وضع البيض تلقائياً", "Auto Place", function(v)
+	State.autoPlace = v
+end)
+
+BaseSec:NewToggle("تفقيس البيض تلقائياً", "Auto Hatch", function(v)
+	State.autoHatch = v
+end)
+
+PlayerSec:NewToggle("تفعيل سرعة آمنة", "Safe Speed", function(v)
+	State.speedOn = v
+end)
+
+PlayerSec:NewSlider("السرعة (الحد الأقصى 35)", "Speed", 35, 16, function(v)
 	State.walkSpeed = v
 end)
 
-PlayerSec:NewToggle("قفز لا نهائي", "Infinite Jump", function(v)
+PlayerSec:NewToggle("قفز لا نهائي", "Inf Jump", function(v)
 	State.infJump = v
 end)
 
--- Mobile Movement & Anti-AFK Logic
-local speedBV
+-- Speed Management
 RunService.Heartbeat:Connect(function()
-	if not State.running then return end
-	local char = LocalPlayer.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	
-	if State.speedOn and root and hum then
-		if hum.MoveDirection.Magnitude > 0.05 then
-			root.CFrame = root.CFrame + (hum.MoveDirection * (State.walkSpeed / 50))
+	if State.speedOn and LocalPlayer.Character then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum and hum.MoveDirection.Magnitude > 0 then
+			hum.WalkSpeed = math.min(State.walkSpeed, 32)
 		end
 	end
 end)
@@ -128,16 +132,16 @@ LocalPlayer.Idled:Connect(function()
 	end
 end)
 
--- زر عائم لإخفاء/إظهار الواجهة على شاشة الجوال (Toggle UI Button)
+-- Mobile Menu Button
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 ToggleBtn.Parent = ScreenGui
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
 ToggleBtn.Position = UDim2.new(0, 10, 0.4, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Text = "MENU"
+ToggleBtn.Text = "TerNoon"
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 
