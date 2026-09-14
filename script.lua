@@ -1,20 +1,51 @@
--- [[ TerNoon Hub - Steal An Egg (Safe Mobile Version) ]]
+-- [[ TerNoon Hub - Steal An Egg (Bypass Anti-Cheat) ]]
 local genv = (getgenv and getgenv()) or _G
 
-if type(genv.SV_SAE_SHUTDOWN) == "function" then
-	pcall(genv.SV_SAE_SHUTDOWN)
+if type(genv.TN_SHUTDOWN) == "function" then
+	pcall(genv.TN_SHUTDOWN)
 	task.wait(0.1)
 end
-if genv.SV_SAE_RUNNING then return end
-genv.SV_SAE_RUNNING = true
+if genv.TN_RUNNING then return end
+genv.TN_RUNNING = true
+
+-- 1. تعطيل نظام الحماية المباشر (Bypass Anti-Cheat) لمنع الطرد عند الضغط
+pcall(function()
+	local RawMetatable = getrawmetatable(game)
+	if RawMetatable then
+		local OldNamecall = RawMetatable.__namecall
+		setreadonly(RawMetatable, false)
+
+		RawMetatable.__namecall = newcclosure(function(self, ...)
+			local Method = getnamecallmethod()
+			-- منع طلبات الكشف والحظر القادمة من السيرفر/العميل
+			if Method == "FireServer" or Method == "InvokeServer" then
+				local Name = tostring(self)
+				if Name:find("Ban") or Name:find("Kick") or Name:find("Check") or Name:find("Detection") or Name:find("Guard") then
+					return nil
+				end
+			end
+			return OldNamecall(self, ...)
+		end)
+		setreadonly(RawMetatable, true)
+	end
+end)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
-local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+-- 2. استدعاء شبكة اللعبة الأصلية بأمان (Safe Network Call)
+local Lib = ReplicatedStorage:WaitForChild("Library", 10)
+local Client = Lib and Lib:WaitForChild("Client", 10)
+local Network
+if Client then
+	pcall(function()
+		Network = require(Client:WaitForChild("Network", 5))
+	end)
+end
 
 -- Kavo UI Engine
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
@@ -24,107 +55,82 @@ local FarmTab = Window:NewTab("المزرعة")
 local BaseTab = Window:NewTab("القاعدة")
 local PlayerTab = Window:NewTab("اللاعب")
 
-local FarmSec = FarmTab:NewSection("أتمتة السرقة (Safe)")
-local BaseSec = BaseTab:NewSection("البيض")
-local PlayerSec = PlayerTab:NewSection("الحركة والحماية")
+local FarmSec = FarmTab:NewSection("أتمتة البيض")
+local BaseSec = BaseTab:NewSection("إدارة المقر")
+local PlayerSec = PlayerTab:NewSection("الحركة")
 
 local State = {
 	running = true,
-	autofarm = false,
 	autoPlace = false,
 	autoHatch = false,
 	speedOn = false,
-	walkSpeed = 24, -- سرعة آمنة لتفادي الطرد
-	infJump = false,
+	walkSpeed = 24,
 	antiAfk = true
 }
 
--- Safe Movement Helper (Avoid Anti-Cheat Kick)
-local function safeMoveTo(targetCFrame)
-	local char = LocalPlayer.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-
-	local dist = (root.Position - targetCFrame.Position).Magnitude
-	local speed = math.clamp(State.walkSpeed, 16, 30)
-	local time = dist / speed
-
-	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
-	local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
-	tween:Play()
-	tween.Completed:Wait()
+-- Safe Action Triggers
+local function fireNet(remoteName, ...)
+	if Network and typeof(Network.Fire) == "function" then
+		pcall(function(...) Network.Fire(remoteName, ...) end, ...)
+	elseif Network and typeof(Network.Invoke) == "function" then
+		pcall(function(...) Network.Invoke(remoteName, ...) end, ...)
+	end
 end
 
--- Farm Logic Loop
+-- Logic Loop (تنفذ العمليات عبر الشبكة الأصلية دون طرد)
 task.spawn(function()
 	while State.running do
-		task.wait(0.5)
-		if State.autofarm then
+		task.wait(1)
+		
+		-- وضع البيض تلقائياً
+		if State.autoPlace then
 			pcall(function()
-				-- البحث عن البيض القريب في الخريطة
-				local eggsFolder = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("DroppedEggs")
-				if eggsFolder then
-					for _, egg in ipairs(eggsFolder:GetChildren()) do
-						if not State.autofarm then break end
-						if egg:IsA("BasePart") or egg:FindFirstChild("TouchInterest") or egg:FindFirstChildOfClass("ProximityPrompt") then
-							local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
-							if prompt then
-								safeMoveTo(egg.CFrame + Vector3.new(0, 3, 0))
-								task.wait(0.2)
-								fireproximityprompt(prompt)
-								task.wait(0.5)
-							end
-						end
-					end
-				end
+				fireNet("Plot: PlaceEgg")
+				fireNet("PlotCmds: PlaceEgg")
+			end)
+		end
+
+		-- تفقيس البيض تلقائياً
+		if State.autoHatch then
+			pcall(function()
+				fireNet("Plot: HatchEgg")
+				fireNet("EggCmds: Hatch")
 			end)
 		end
 	end
 end)
 
 -- Controls
-FarmSec:NewToggle("تفعيل السرقة التلقائية الآمنة", "Safe Autofarm", function(v)
-	State.autofarm = v
-end)
-
-BaseSec:NewToggle("وضع البيض تلقائياً", "Auto Place", function(v)
+BaseSec:NewToggle("وضع البيض تلقائياً", "Auto Place Egg", function(v)
 	State.autoPlace = v
 end)
 
-BaseSec:NewToggle("تفقيس البيض تلقائياً", "Auto Hatch", function(v)
+BaseSec:NewToggle("تفقيس البيض تلقائياً", "Auto Hatch Egg", function(v)
 	State.autoHatch = v
 end)
 
-PlayerSec:NewToggle("تفعيل سرعة آمنة", "Safe Speed", function(v)
+PlayerSec:NewToggle("سرعة مشي آمنة", "Safe Speed", function(v)
 	State.speedOn = v
+	if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+	end
 end)
 
-PlayerSec:NewSlider("السرعة (الحد الأقصى 35)", "Speed", 35, 16, function(v)
+PlayerSec:NewSlider("تعديل السرعة", "WalkSpeed", 32, 16, function(v)
 	State.walkSpeed = v
 end)
 
-PlayerSec:NewToggle("قفز لا نهائي", "Inf Jump", function(v)
-	State.infJump = v
-end)
-
--- Speed Management
+-- Speed Loop
 RunService.Heartbeat:Connect(function()
 	if State.speedOn and LocalPlayer.Character then
 		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if hum and hum.MoveDirection.Magnitude > 0 then
-			hum.WalkSpeed = math.min(State.walkSpeed, 32)
+			hum.WalkSpeed = State.walkSpeed
 		end
 	end
 end)
 
-UserInputService.JumpRequest:Connect(function()
-	if State.infJump and LocalPlayer.Character then
-		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-	end
-end)
-
+-- Anti-AFK
 LocalPlayer.Idled:Connect(function()
 	if State.antiAfk then
 		VirtualUser:CaptureController()
@@ -132,7 +138,7 @@ LocalPlayer.Idled:Connect(function()
 	end
 end)
 
--- Mobile Menu Button
+-- Floating UI Button for Mobile
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
