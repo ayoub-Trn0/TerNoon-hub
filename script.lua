@@ -1,43 +1,29 @@
--- 1. استدعاء مكتبة الواجهات Fluent متوافقة مع الجوال ودلتا
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+-- 1. استدعاء مكتبة Orion الخفيفة والمناسبة للجوال ودلتا
+local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
 
--- 2. إنشاء النافذة الرئيسية للواجهة
-local Window = Fluent:CreateWindow({
-    Title = "Steal an Egg - Egg Collector 🥚",
-    SubTitle = "نسخة الجوال",
-    TabWidth = 140,
-    Size = UDim2.fromOffset(450, 320), -- حجم مناسب جداً لشاشات الجوال
-    Acrylic = false, -- إيقاف التغبيش لتحسين الأداء (FPS) على الهواتف
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl
+-- 2. إنشاء النافذة الرئيسية
+local Window = OrionLib:MakeWindow({
+    Name = "Steal an Egg - Egg Collector 🥚",
+    HidePremium = true,
+    SaveConfig = false,
+    ConfigFolder = "OrionTest",
+    IntroEnabled = false -- إيقاف مقدمة التشغيل لضمان عدم التعليق على الجوال
 })
 
--- 3. إضافة تبويب جديد داخل الواجهة
-local Tabs = {
-    Main = Window:AddTab({ Title = "الرئيسية", Icon = "egg" })
-}
-
--- 4. إضافة نص توضيحي
-Tabs.Main:AddParagraph({
-    Title = "فحص البيض تلقائياً",
-    Content = "اضغط على الزر بالأسفل لجلب كافة أسماء وأماكن البيض المتاحة في الماب."
+-- 3. إضافة تبويب رئيسي
+local MainTab = Window:MakeTab({
+    Name = "الرئيسية",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
 })
 
--- 5. إضافة زر الفحص المتجاوب
-Tabs.Main:AddButton({
-    Title = "تجميع وفحص كل البيض 🥚",
-    Description = "يجلب أسماء البيض من مجلدات الماب تلقائياً",
+-- 4. إضافة زر التجميع المتوافق مع اللمس
+MainTab:AddButton({
+    Name = "فحص وتجميع البيض 🥚",
     Callback = function()
-        -- إرسال إشعار للمستخدم بدء العملية
-        Fluent:Notify({
-            Title = "جاري البحث...",
-            Content = " يتم فحص مسارات الماب الآن",
-            Duration = 2
-        })
-
         local foundEggs = {}
 
-        -- المسارات الشائعة لوجود البيض في مابات السرقة
+        -- البحث في المسارات المختلفة للعبة Steal an Egg
         local possiblePaths = {
             workspace:FindFirstChild("Eggs"),
             workspace:FindFirstChild("DroppedEggs"),
@@ -45,7 +31,6 @@ Tabs.Main:AddButton({
             game:GetService("ReplicatedStorage"):FindFirstChild("Eggs")
         }
 
-        -- فحص المجلدات وتجميع العناصر
         for _, folder in ipairs(possiblePaths) do
             if folder then
                 for _, item in ipairs(folder:GetChildren()) do
@@ -54,12 +39,13 @@ Tabs.Main:AddButton({
             end
         end
 
-        -- عرض النتيجة عبر إشعار متناسق في الشاشة
+        -- إظهار إشعار النتيجة على الشاشة مباشرة
         if #foundEggs > 0 then
-            Fluent:Notify({
-                Title = "نجحت العملية! 🎉",
+            OrionLib:MakeNotification({
+                Name = "تم الفحص بنجاح! 🎉",
                 Content = "تم العثور على " .. #foundEggs .. " بيضة داخل الماب.",
-                Duration = 4
+                Image = "rbxassetid://4483345998",
+                Time = 4
             })
             
             print("--- قائمة البيض المكتشف ---")
@@ -67,21 +53,15 @@ Tabs.Main:AddButton({
                 print(i .. ". " .. egg)
             end
         else
-            Fluent:Notify({
-                Title = "تنبيه ⚠️",
-                Content = "لم يتم العثور على مجلد باسم Eggs، استخدم Dark Dex لمعرفة اسم المجلد.",
-                Duration = 5
+            OrionLib:MakeNotification({
+                Name = "تنبيه ⚠️",
+                Content = "لم يتم العثور على مجلد Eggs، جرب التأكد من مسار الماب.",
+                Image = "rbxassetid://4483345998",
+                Time = 4
             })
         end
     end
 })
 
--- اختيار التبويب الرئيسي بشكل افتراضي
-Window:SelectTab(1)
-
--- إشعار بنجاح تحميل الواجهة
-Fluent:Notify({
-    Title = "تم تشغيل الواجهة",
-    Content = "الواجهة جاهزة للاستخدام على الجوال!",
-    Duration = 3
-})
+-- 5. إنهاء تهيئة المكتبة (ضروري لظهور الواجهة)
+OrionLib:Init()
